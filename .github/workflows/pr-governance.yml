@@ -1,0 +1,29 @@
+name: pr-policy
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  topology-and-template:
+    name: topology-and-template
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate branch topology and PR evidence
+        run: node scripts/ci/validate-pr-policy.mjs
+        env:
+          PR_BASE: ${{ github.base_ref }}
+          PR_HEAD: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}

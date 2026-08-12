@@ -1,0 +1,40 @@
+name: resilience-evidence
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 20 * * 2"
+permissions:
+  contents: read
+jobs:
+  load-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npm run build --workspace @flowline/api
+      - run: npm run start --workspace @flowline/api > api.log 2>&1 &
+      - run: curl --fail --retry 30 --retry-delay 1 http://127.0.0.1:4000/health/ready
+      - run: docker run --rm --network host -v "$PWD/tests/load:/scripts:ro" grafana/k6:0.54.0 run /scripts/api-smoke.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: resilience-evidence, path: api.log, retention-days: 30 }
+
+  chaos-guard:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Destructive experiment must reject missing guard
+        shell: pwsh
+        run: |
+          $failed = $false
+          try { ./ops/chaos/invoke-experiment.ps1 -Experiment cache-outage -ConfirmToken wrong -DurationSeconds 5 } catch { $failed = $true }
+          if (-not $failed) { throw 'Chaos guard failed open.' }
+      - name: Valid plan must remain non-mutating without Execute
+        shell: pwsh
+        run: |
+          $env:APP_ENV = 'ci'
+          $env:CHAOS_ENABLED = 'true'
+          ./ops/chaos/invoke-experiment.ps1 -Experiment cache-outage -ConfirmToken FLOWLINE-LOCAL-CHAOS -DurationSeconds 5
