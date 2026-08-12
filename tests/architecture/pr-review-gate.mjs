@@ -281,7 +281,7 @@ if (process.env.GITHUB_EVENT_PATH && await isReadable(path.relative(root, proces
     const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, 'utf8'));
     if (event.pull_request) {
       const body = event.pull_request.body ?? '';
-      for (const heading of ['## Outcome', '## Scope and boundaries', '## Data and security impact', '## Evidence produced by the author', '## Author declaration']) {
+      for (const heading of ['## Outcome', '## Scope and architecture', '## Developer evidence (white-box)', '## Independent verification']) {
         if (!body.includes(heading)) report('PR-001', '.github/PULL_REQUEST_TEMPLATE.md', `PR description is missing required section '${heading}'`);
       }
     }
