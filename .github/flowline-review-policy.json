@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "repositoryOwner": "@SunilKumarba2955",
+  "approvedDatastores": ["postgresql", "clickhouse", "redis", "minio", "s3"],
+  "requiredArtifacts": [
+    ".github/CODEOWNERS",
+    ".github/PULL_REQUEST_TEMPLATE.md",
+    "docs/governance/PR_REVIEW_POLICY.md",
+    "docs/governance/ARCHITECTURE_SECURITY_CHECKLIST.md",
+    "docs/architecture/adr/TEMPLATE.md",
+    "docs/governance/ARCHITECTURE_EXCEPTION_TEMPLATE.md",
+    "docs/governance/RISK_ACCEPTANCE_TEMPLATE.md"
+  ],
+  "domainRoots": ["modules"],
+  "aiOrchestrationRoots": ["modules/ai-orchestration/src", "apps/orchestrator/src"],
+  "authoritativeMoneyRoots": ["modules/finance/src", "packages/contracts/src"],
+  "generatedOrVendoredRoots": [
+    ".git",
+    "node_modules",
+    "dist",
+    "coverage",
+    "playwright-report",
+    "test-results"
+  ],
+  "forbiddenDomainPackages": [
+    "react",
+    "react-dom",
+    "fastify",
+    "@fastify/",
+    "mercurius",
+    "express",
+    "@nestjs/",
+    "pg",
+    "postgres",
+    "redis",
+    "ioredis",
+    "@clickhouse/",
+    "minio",
+    "@aws-sdk/",
+    "stripe",
+    "razorpay",
+    "axios"
+  ],
+  "forbiddenWebRoots": ["apps/api", "modules", "database", "infra", "ops"],
+  "forbiddenContractRoots": ["apps", "modules", "database", "infra", "ops"],
+  "forbiddenDesignSystemRoots": ["apps", "modules", "database", "infra", "ops"]
+  ,
+  "aiOrchestration": {
+    "moduleRoot": "modules/ai-orchestration",
+    "transportRoot": "apps/orchestrator",
+    "allowedModuleBuiltins": ["node:crypto"],
+    "prohibitedRawDataTerms": [
+      "accountNumber",
+      "maskedNumber",
+      "transactionDescription",
+      "providerToken",
+      "accessToken",
+      "refreshToken",
+      "pan",
+      "cvv",
+      "otp",
+      "pin",
+      "password"
+    ]
+  }
+}

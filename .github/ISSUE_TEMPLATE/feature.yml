@@ -1,0 +1,46 @@
+name: Feature
+description: Define a testable Flowline product or platform change.
+title: "feat: "
+labels: [enhancement, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: Use synthetic data only. Do not include account numbers, PAN, credentials, or provider payloads.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: User outcome
+      description: What becomes possible, and for whom?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Include observable success, failure, boundary, loading, empty, and accessibility behavior.
+      placeholder: |
+        - [ ] Given ... when ... then ...
+        - [ ] Failure and retry behavior ...
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Highest risk
+      options: [Money correctness, Privacy or consent, Authorization, Availability, Accessibility, Low risk]
+    validations:
+      required: true
+  - type: textarea
+    id: architecture
+    attributes:
+      label: Architecture and data impact
+      description: Boundaries, persistence, contracts, migrations, consistency, and rollback. Link an ADR when required.
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Required developer and independent tests
+      description: Name unit, integration, component, E2E, black-box, and manual scenarios.
+    validations:
+      required: true

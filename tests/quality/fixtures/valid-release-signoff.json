@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0.0",
+  "prNumber": 42,
+  "headSha": "0123456789abcdef0123456789abcdef01234567",
+  "riskTier": "MEDIUM",
+  "testedAt": "2026-08-13T12:30:00.000Z",
+  "tester": {
+    "githubLogin": "flowline-qa",
+    "role": "INDEPENDENT_QA",
+    "independenceAttested": true
+  },
+  "environment": {
+    "buildSha": "0123456789abcdef0123456789abcdef01234567",
+    "dataClass": "SYNTHETIC",
+    "platform": "Windows 11; local preview; Asia/Kolkata",
+    "browsers": ["Chromium desktop", "Pixel 7 emulation"],
+    "apiMode": "LOCAL_STACK"
+  },
+  "developerEvidence": [
+    {
+      "gate": "developer-ci",
+      "status": "PASS",
+      "evidenceRef": "github-check://flowline-ci/12345"
+    }
+  ],
+  "manualCases": [
+    { "id": "M-01", "result": "PASS", "evidenceRefs": ["artifact://qa-42/routes.png"], "notes": "Every route and refresh completed without console errors." },
+    { "id": "M-02", "result": "PASS", "evidenceRefs": ["artifact://qa-42/mobile-keyboard.webm"], "notes": "Keyboard and narrow viewport behavior passed." },
+    { "id": "M-03", "result": "PASS", "evidenceRefs": ["artifact://qa-42/reduced-motion.png"], "notes": "Meaning remained available with reduced motion." },
+    { "id": "M-04", "result": "PASS", "evidenceRefs": ["artifact://qa-42/bureaus.png"], "notes": "Four bureaus remained independent and no average was shown." },
+    { "id": "M-08", "result": "PASS", "evidenceRefs": ["artifact://qa-42/scope-isolation.png"], "notes": "Corporate activity remained outside personal cash flow." },
+    { "id": "M-09", "result": "PASS", "evidenceRefs": ["artifact://qa-42/ist-due-date.png"], "notes": "Due dates and state were correct in Asia/Kolkata." },
+    { "id": "M-11", "result": "PASS", "evidenceRefs": ["artifact://qa-42/redacted-log-review.txt"], "notes": "No tokens, raw report, or unmasked account values appeared." }
+  ],
+  "defects": [],
+  "nonFunctional": {
+    "accessibility": { "status": "PASS", "evidenceRef": "artifact://qa-42/accessibility.md" },
+    "securityPrivacy": { "status": "PASS", "evidenceRef": "artifact://qa-42/privacy.md" },
+    "performance": { "status": "NOT_APPLICABLE", "evidenceRef": "scope://no-performance-impact" },
+    "resilience": { "status": "NOT_APPLICABLE", "evidenceRef": "scope://no-resilience-impact" }
+  },
+  "decision": {
+    "verdict": "ACCEPT",
+    "rationale": "All in-scope and mandatory independent checks passed against the recorded head SHA.",
+    "exceptions": []
+  }
+}

@@ -1,0 +1,44 @@
+name: Independent QA validation
+description: Track black-box automation and manual acceptance against an immutable candidate SHA.
+title: "qa: validate "
+labels: [qa, validation]
+body:
+  - type: input
+    id: sha
+    attributes:
+      label: Candidate commit SHA
+      description: Evidence is invalid if the candidate changes after this record is opened.
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source PR or release
+      placeholder: "#123 or release/1.2.0"
+    validations:
+      required: true
+  - type: textarea
+    id: blackbox
+    attributes:
+      label: Black-box scenarios
+      placeholder: |
+        - [ ] Happy path
+        - [ ] Invalid and hostile input
+        - [ ] Offline, timeout, retry, and recovery
+        - [ ] Mobile, keyboard, reduced motion, and screen-reader checks
+    validations:
+      required: true
+  - type: textarea
+    id: manual
+    attributes:
+      label: Manual-test evidence
+      description: Record environment, tester, timestamp, results, and links to redacted artifacts.
+    validations:
+      required: true
+  - type: dropdown
+    id: decision
+    attributes:
+      label: Decision
+      options: [Pending, Pass, Fail, Blocked]
+    validations:
+      required: true

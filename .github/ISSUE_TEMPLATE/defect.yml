@@ -1,0 +1,45 @@
+name: Defect
+description: Report a reproducible failure using synthetic or redacted evidence.
+title: "fix: "
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: Never attach real financial data, credentials, access tokens, or unredacted provider payloads.
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options: [Sev-1, Sev-2, Sev-3, Sev-4]
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Deterministic reproduction
+      description: Include commit SHA, environment, synthetic fixture, and exact steps.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Correctness, privacy, and customer impact
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence
+      description: Logs, traces, screenshots, or failing test names with all sensitive data removed.

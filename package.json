@@ -1,0 +1,41 @@
+{
+  "name": "flowline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,green \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run dev --workspace @flowline/api",
+    "dev:web": "npm run dev --workspace @flowline/web",
+    "dev:orchestrator": "npm run dev --workspace @flowline/orchestrator",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:unit": "npm run test:unit --workspaces --if-present",
+    "test:integration": "npm run test:integration --workspaces --if-present",
+    "test:component": "npm run test:component --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:architecture": "node tests/architecture/verify.mjs",
+    "test:review": "node tests/architecture/pr-review-gate.mjs",
+    "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
+    "test:e2e:ui": "playwright test --config tests/e2e/playwright.config.ts --ui",
+    "test:load": "docker run --rm --network host -i grafana/k6:0.54.0 run - < tests/load/api-smoke.js",
+    "infra:config": "docker compose config --quiet",
+    "infra:up": "docker compose --profile data up -d --wait",
+    "infra:down": "docker compose --profile data --profile observability down"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "concurrently": "^9.2.1",
+    "esbuild": "0.28.2"
+  },
+  "overrides": {
+    "esbuild": "0.28.2"
+  }
+}
