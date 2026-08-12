@@ -1,0 +1,18 @@
+groups:
+  - name: flowline-platform
+    rules:
+      - alert: FlowlineApiUnavailable
+        expr: up{job="flowline-api"} == 0
+        for: 2m
+        labels: { severity: critical, runbook: api-unavailable }
+        annotations:
+          summary: Flowline API cannot be scraped
+          runbook_url: docs/operations/RUNBOOKS.md#api-unavailable
+      - alert: FlowlineScrapeSamplesMissing
+        expr: absent(up{job="flowline-api"})
+        for: 5m
+        labels: { severity: warning, runbook: telemetry-gap }
+        annotations:
+          summary: API scrape target is missing from service discovery
+          runbook_url: docs/operations/RUNBOOKS.md#telemetry-gap
+

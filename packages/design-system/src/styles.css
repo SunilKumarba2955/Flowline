@@ -1,0 +1,150 @@
+:root {
+  --canvas: #f2f7f4;
+  --canvas-deep: #e7f0eb;
+  --surface: #ffffff;
+  --surface-raised: #fbfdfc;
+  --surface-tint: #e9f4ef;
+  --ink: #14261f;
+  --ink-soft: #53665e;
+  --ink-faint: #788a82;
+  --line: #dbe6e1;
+  --line-strong: #c7d7d0;
+  --flow: #169d75;
+  --flow-deep: #0c7456;
+  --flow-soft: #d8f2e7;
+  --blue: #316ee8;
+  --blue-soft: #e5edff;
+  --amber: #bc7618;
+  --amber-soft: #fff0d7;
+  --coral: #c94c58;
+  --coral-soft: #ffe6e9;
+  --violet: #7659ce;
+  --violet-soft: #eee9ff;
+  --shadow-sm: 0 1px 2px rgb(17 44 34 / 5%), 0 7px 24px rgb(17 44 34 / 4%);
+  --shadow-md: 0 18px 48px rgb(17 44 34 / 9%);
+  --radius-sm: 0.7rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.4rem;
+  --radius-xl: 2rem;
+  --duration-fast: 160ms;
+  --duration-medium: 360ms;
+  --duration-slow: 760ms;
+  --ease-calm: cubic-bezier(0.22, 0.75, 0.18, 1);
+}
+
+* { box-sizing: border-box; }
+
+.fl-button,
+.fl-icon-button,
+.fl-segmented button {
+  -webkit-tap-highlight-color: transparent;
+  align-items: center;
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  justify-content: center;
+  transition: background-color var(--duration-fast), color var(--duration-fast), border-color var(--duration-fast), transform var(--duration-fast);
+}
+
+.fl-button {
+  border-radius: 0.72rem;
+  font-size: 0.84rem;
+  font-weight: 650;
+  gap: 0.48rem;
+  min-height: 2.55rem;
+  padding: 0.68rem 1rem;
+}
+
+.fl-button:hover,
+.fl-icon-button:hover { transform: translateY(-1px); }
+.fl-button:active,
+.fl-icon-button:active { transform: translateY(0); }
+.fl-button--sm { font-size: 0.77rem; min-height: 2.1rem; padding: 0.48rem 0.75rem; }
+.fl-button--primary { background: var(--ink); color: #fff; }
+.fl-button--primary:hover { background: #294239; }
+.fl-button--secondary { background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink); }
+.fl-button--secondary:hover { background: var(--surface-tint); border-color: #a8c1b6; }
+.fl-button--quiet { background: transparent; color: var(--ink-soft); }
+.fl-button--quiet:hover { background: var(--surface-tint); color: var(--ink); }
+.fl-button--danger { background: var(--coral-soft); color: #9f303b; }
+.fl-button:disabled { cursor: not-allowed; opacity: .5; transform: none; }
+
+.fl-icon-button {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--ink-soft);
+  height: 2.6rem;
+  width: 2.6rem;
+}
+
+.fl-card {
+  background: color-mix(in srgb, var(--surface) 95%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+
+.fl-card--interactive { transition: border-color var(--duration-fast), box-shadow var(--duration-fast), transform var(--duration-fast); }
+.fl-card--interactive:hover { border-color: var(--line-strong); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.fl-badge {
+  align-items: center;
+  background: var(--canvas-deep);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  display: inline-flex;
+  font-size: .68rem;
+  font-weight: 700;
+  gap: .3rem;
+  letter-spacing: .015em;
+  line-height: 1;
+  padding: .42rem .58rem;
+  white-space: nowrap;
+}
+.fl-badge--positive { background: var(--flow-soft); color: var(--flow-deep); }
+.fl-badge--info { background: var(--blue-soft); color: #2456b9; }
+.fl-badge--warning { background: var(--amber-soft); color: #8c570f; }
+.fl-badge--critical { background: var(--coral-soft); color: #a63440; }
+
+.fl-segmented {
+  background: var(--canvas-deep);
+  border-radius: .8rem;
+  display: inline-flex;
+  gap: .18rem;
+  padding: .22rem;
+}
+.fl-segmented button {
+  background: transparent;
+  border-radius: .62rem;
+  color: var(--ink-faint);
+  font-size: .76rem;
+  font-weight: 650;
+  min-height: 2rem;
+  padding: .42rem .7rem;
+}
+.fl-segmented button[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 4px rgb(20 38 31 / 10%); color: var(--ink); }
+
+.fl-button:focus-visible,
+.fl-icon-button:focus-visible,
+.fl-segmented button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--blue) 30%, transparent);
+  outline-offset: 2px;
+}
+
+.fl-skeleton {
+  animation: fl-shimmer 1.4s infinite;
+  background: linear-gradient(90deg, var(--canvas-deep) 25%, #f8fbf9 50%, var(--canvas-deep) 75%);
+  background-size: 200% 100%;
+  border-radius: .5rem;
+  display: block;
+  height: 1rem;
+}
+
+@keyframes fl-shimmer { to { background-position-x: -200%; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
+}
