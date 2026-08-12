@@ -23,8 +23,8 @@ export default defineConfig({
   webServer: process.env.E2E_EXTERNAL_SERVER
     ? undefined
     : [
-        { command: "npm run dev --workspace @flowline/api", url: `http://127.0.0.1:${apiPort}/health/ready`, reuseExistingServer: !ci, timeout: 120_000 },
-        { command: `npx vite --config apps/web/vite.config.js --configLoader runner --host 0.0.0.0 --port ${webPort}`, url: `http://127.0.0.1:${webPort}`, reuseExistingServer: !ci, timeout: 120_000 }
+        { command: "npm run dev --workspace @flowline/api", cwd: "../..", url: `http://127.0.0.1:${apiPort}/health/ready`, reuseExistingServer: !ci, timeout: 120_000 },
+        { command: `npx vite --config apps/web/vite.config.js --configLoader runner --host 0.0.0.0 --port ${webPort}`, cwd: "../..", url: `http://127.0.0.1:${webPort}`, reuseExistingServer: !ci, timeout: 120_000 }
       ],
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },

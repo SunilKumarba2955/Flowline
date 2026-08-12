@@ -22,6 +22,7 @@
     "test:component": "npm run test:component --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test:architecture": "node tests/architecture/verify.mjs",
+    "test:review": "node tests/architecture/pr-review-gate.mjs",
     "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
     "test:e2e:ui": "playwright test --config tests/e2e/playwright.config.ts --ui",
     "test:load": "docker run --rm --network host -i grafana/k6:0.54.0 run - < tests/load/api-smoke.js",
