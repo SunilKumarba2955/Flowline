@@ -1,0 +1,176 @@
+name: independent-qa-gate
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+# Metadata-only gate. It never checks out or executes pull-request code, including for forks.
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: independent-qa-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  independent-signoff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      QA_REVIEWERS: ${{ vars.QA_REVIEWERS }}
+    steps:
+      - name: Verify current-head independent QA signoff
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const failures = [];
+            if (!pr) {
+              core.setFailed('Pull request metadata is unavailable.');
+              return;
+            }
+
+            const normalize = (value) => String(value ?? '').trim().toLowerCase();
+            const author = normalize(pr.user.login);
+            const headSha = normalize(pr.head.sha);
+            const labels = new Set((pr.labels ?? []).map((label) => normalize(label.name)));
+            const allowed = new Set((process.env.QA_REVIEWERS ?? '').split(',').map(normalize).filter(Boolean));
+            const releaseCandidate = labels.has('release:candidate');
+
+            if (pr.draft) failures.push('Draft pull requests cannot receive release acceptance.');
+            if (!labels.has('qa:approved')) failures.push('Missing qa:approved label.');
+            if (allowed.size === 0) failures.push('Repository variable QA_REVIEWERS is missing; the gate fails closed.');
+            if (allowed.has(author)) core.warning('The PR author appears in QA_REVIEWERS; their approval remains ineligible for this PR.');
+
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100
+            });
+
+            // GitHub can retain multiple reviews per user. Only that user's newest state counts.
+            const latestByReviewer = new Map();
+            for (const review of reviews.sort((left, right) => left.id - right.id)) {
+              if (review.user?.login) latestByReviewer.set(normalize(review.user.login), review);
+            }
+
+            const candidateReviews = [...latestByReviewer.entries()]
+              .filter(([login, review]) =>
+                login !== author &&
+                allowed.has(login) &&
+                review.state === 'APPROVED' &&
+                normalize(review.commit_id) === headSha
+              );
+
+            const evidenceFailures = [];
+            const validApprovals = [];
+            for (const [login, review] of candidateReviews) {
+              const result = validateEvidence(extractEvidence(review.body), {
+                author,
+                reviewer: login,
+                prNumber: pr.number,
+                headSha,
+                releaseCandidate
+              });
+              if (result.failures.length === 0) validApprovals.push({ login, review, evidence: result.evidence });
+              else evidenceFailures.push(`${login}: ${result.failures.join('; ')}`);
+            }
+
+            if (candidateReviews.length === 0) {
+              failures.push('No allow-listed reviewer has approved the current head SHA.');
+            } else if (validApprovals.length === 0) {
+              failures.push(`No current approval contains valid evidence. ${evidenceFailures.join(' | ')}`);
+            }
+
+            // A label is not a signature. Its latest actor must also own a valid approval,
+            // and it must have been applied after that approval.
+            if (labels.has('qa:approved') && validApprovals.length > 0) {
+              const events = await github.paginate(github.rest.issues.listEvents, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                per_page: 100
+              });
+              const labelEvents = events.filter((event) =>
+                ['labeled', 'unlabeled'].includes(event.event) && normalize(event.label?.name) === 'qa:approved'
+              );
+              const latestLabelEvent = labelEvents.at(-1);
+              if (!latestLabelEvent || latestLabelEvent.event !== 'labeled') {
+                failures.push('The current qa:approved label has no auditable label event.');
+              } else {
+                const labeler = normalize(latestLabelEvent.actor?.login);
+                const matchingApproval = validApprovals.find(({ login }) => login === labeler);
+                if (!matchingApproval) failures.push('qa:approved must be applied by the same allow-listed reviewer who supplied valid current-head evidence.');
+                else if (Date.parse(latestLabelEvent.created_at) < Date.parse(matchingApproval.review.submitted_at)) {
+                  failures.push('qa:approved was applied before the independent approval; remove and reapply it after approval.');
+                }
+              }
+            }
+
+            if (failures.length > 0) {
+              for (const failure of failures) core.error(failure);
+              core.setFailed('Independent QA acceptance requirements are not satisfied.');
+              return;
+            }
+
+            core.notice(`Independent QA accepted PR #${pr.number} at ${pr.head.sha} by ${validApprovals.map(({ login }) => login).join(', ')}.`);
+
+            function extractEvidence(body) {
+              const text = String(body ?? '');
+              const section = text.match(/<!--\s*flowline-qa-evidence:start\s*-->([\s\S]*?)<!--\s*flowline-qa-evidence:end\s*-->/i);
+              if (!section) return { parseFailure: 'missing Flowline evidence markers' };
+              const blocks = [...section[1].matchAll(/```json\s*([\s\S]*?)```/gi)];
+              if (blocks.length !== 1) return { parseFailure: 'evidence section must contain exactly one JSON code block' };
+              try { return { value: JSON.parse(blocks[0][1]) }; }
+              catch (error) { return { parseFailure: `invalid evidence JSON: ${error.message}` }; }
+            }
+
+            function validateEvidence(extracted, expected) {
+              const problems = [];
+              if (extracted.parseFailure) return { failures: [extracted.parseFailure] };
+              const evidence = extracted.value;
+              const lower = normalize;
+              if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) return { failures: ['evidence must be an object'] };
+              if (evidence.schemaVersion !== '1.0.0') problems.push('schemaVersion must be 1.0.0');
+              if (evidence.prNumber !== expected.prNumber) problems.push('prNumber does not match this PR');
+              if (lower(evidence.headSha) !== expected.headSha) problems.push('headSha is stale or mismatched');
+              if (lower(evidence.environment?.buildSha) !== expected.headSha) problems.push('environment.buildSha does not match the current head');
+              if (evidence.environment?.dataClass !== 'SYNTHETIC') problems.push('only SYNTHETIC test data is permitted');
+              if (lower(evidence.tester?.githubLogin) !== expected.reviewer) problems.push('tester must match the approving reviewer');
+              if (lower(evidence.tester?.githubLogin) === expected.author) problems.push('PR author cannot be the independent tester');
+              if (evidence.tester?.role !== 'INDEPENDENT_QA' || evidence.tester?.independenceAttested !== true) problems.push('independence attestation is missing');
+              if (evidence.decision?.verdict !== 'ACCEPT') problems.push('decision verdict must be ACCEPT');
+              if (!String(evidence.decision?.rationale ?? '').trim()) problems.push('decision rationale is required');
+
+              if (!Array.isArray(evidence.developerEvidence) || evidence.developerEvidence.length === 0 || evidence.developerEvidence.some((gate) => gate.status !== 'PASS' || !String(gate.evidenceRef ?? '').trim())) {
+                problems.push('all developer evidence gates must pass and link evidence');
+              }
+
+              const cases = Array.isArray(evidence.manualCases) ? evidence.manualCases : [];
+              const byId = new Map(cases.map((testCase) => [testCase.id, testCase]));
+              const requiredCases = expected.releaseCandidate
+                ? Array.from({ length: 15 }, (_, index) => `M-${String(index + 1).padStart(2, '0')}`)
+                : ['M-01', 'M-02', 'M-03', 'M-04', 'M-08', 'M-09', 'M-11'];
+              for (const id of requiredCases) {
+                const testCase = byId.get(id);
+                if (!testCase || testCase.result !== 'PASS' || !Array.isArray(testCase.evidenceRefs) || testCase.evidenceRefs.length === 0) problems.push(`${id} must pass with evidence`);
+              }
+              if (cases.some((testCase) => ['FAIL', 'BLOCKED', 'NOT_RUN'].includes(testCase.result))) problems.push('acceptance cannot include failed, blocked, or not-run manual cases');
+
+              const defects = Array.isArray(evidence.defects) ? evidence.defects : [];
+              if (defects.some((defect) => ['SEV1', 'SEV2'].includes(defect.severity) && defect.status !== 'FIXED')) problems.push('Sev-1/2 defects must be fixed');
+              if (defects.some((defect) => defect.status === 'OPEN' && defect.severity !== 'SEV4')) problems.push('open Sev-1/2/3 defects prevent acceptance');
+
+              if (evidence.nonFunctional?.accessibility?.status !== 'PASS') problems.push('accessibility must pass');
+              if (evidence.nonFunctional?.securityPrivacy?.status !== 'PASS') problems.push('security/privacy must pass');
+              if (['HIGH', 'CRITICAL'].includes(evidence.riskTier)) {
+                if (evidence.nonFunctional?.performance?.status !== 'PASS') problems.push('high/critical risk requires performance PASS');
+                if (evidence.nonFunctional?.resilience?.status !== 'PASS') problems.push('high/critical risk requires resilience PASS');
+              }
+              return { failures: problems, evidence };
+            }

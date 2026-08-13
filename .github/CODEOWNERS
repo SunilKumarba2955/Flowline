@@ -1,0 +1,28 @@
+# Flowline has one verified GitHub owner today. Keep this file limited to real
+# GitHub users/teams; add a team only after it exists in the repository org.
+* @SunilKumarba2955
+
+# Executable product boundaries
+/apps/api/ @SunilKumarba2955
+/apps/web/ @SunilKumarba2955
+/apps/orchestrator/ @SunilKumarba2955
+/modules/ @SunilKumarba2955
+/modules/finance/ @SunilKumarba2955
+/modules/ai-orchestration/ @SunilKumarba2955
+/packages/contracts/ @SunilKumarba2955
+/packages/design-system/ @SunilKumarba2955
+
+# High-impact data, deployment, and operations boundaries
+/database/ @SunilKumarba2955
+/infra/ @SunilKumarba2955
+/ops/ @SunilKumarba2955
+/docker-compose.yml @SunilKumarba2955
+/.env.example @SunilKumarba2955
+
+# Architecture, security, quality, and repository governance
+/.github/ @SunilKumarba2955
+/AGENTS.md @SunilKumarba2955
+/docs/architecture/ @SunilKumarba2955
+/docs/security/ @SunilKumarba2955
+/docs/governance/ @SunilKumarba2955
+/tests/architecture/ @SunilKumarba2955

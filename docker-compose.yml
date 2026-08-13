@@ -1,0 +1,243 @@
+name: flowline
+
+x-security: &security
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+
+x-health-defaults: &health-defaults
+  interval: 10s
+  timeout: 5s
+  retries: 10
+  start_period: 20s
+
+services:
+  postgres:
+    <<: *security
+    image: postgres:16.4-alpine
+    profiles: [data]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-flowline}
+      POSTGRES_USER: ${POSTGRES_USER:-flowline}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flowline_local_only}
+      POSTGRES_INITDB_ARGS: --data-checksums
+    command: >-
+      postgres -c shared_buffers=256MB -c max_connections=100
+      -c wal_level=replica -c log_min_duration_statement=500
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/postgres/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      <<: *health-defaults
+      test: [CMD-SHELL, "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+    deploy:
+      resources:
+        limits: { memory: 1G, cpus: "1.0" }
+
+  clickhouse:
+    <<: *security
+    image: clickhouse/clickhouse-server:24.8.4.13-alpine
+    profiles: [data]
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-flowline_analytics}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-flowline}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-flowline_local_only}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports:
+      - "127.0.0.1:${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./database/clickhouse/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      <<: *health-defaults
+      test: [CMD-SHELL, "wget -qO- http://127.0.0.1:8123/ping | grep -q Ok"]
+    deploy:
+      resources:
+        limits: { memory: 1G, cpus: "1.0" }
+
+  redis:
+    <<: *security
+    image: redis:7.4.0-alpine
+    profiles: [data]
+    command: >-
+      redis-server --appendonly yes --appendfsync everysec
+      --maxmemory 256mb --maxmemory-policy allkeys-lfu
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      <<: *health-defaults
+      test: [CMD, redis-cli, ping]
+    deploy:
+      resources:
+        limits: { memory: 384M, cpus: "0.5" }
+
+  minio:
+    <<: *security
+    image: minio/minio:RELEASE.2024-08-29T01-40-52Z
+    profiles: [data]
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-flowline_local}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-flowline_local_only}
+    ports:
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      <<: *health-defaults
+      test: [CMD, mc, ready, local]
+    deploy:
+      resources:
+        limits: { memory: 512M, cpus: "0.5" }
+
+  minio-init:
+    image: minio/mc:RELEASE.2024-08-26T10-49-58Z
+    profiles: [data]
+    depends_on:
+      minio: { condition: service_healthy }
+    restart: "no"
+    security_opt: [no-new-privileges:true]
+    entrypoint: [/bin/sh, /config/init.sh]
+    environment:
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-flowline-local}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-flowline_local}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-flowline_local_only}
+    volumes:
+      - ./infra/minio/init.sh:/config/init.sh:ro
+
+  api:
+    <<: *security
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    profiles: [app]
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      API_HOST: 0.0.0.0
+      API_PORT: "4000"
+      MOCK_MODE: ${MOCK_MODE:-true}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-flowline}:${POSTGRES_PASSWORD:-flowline_local_only}@postgres:5432/${POSTGRES_DB:-flowline}
+      REDIS_URL: redis://redis:6379
+      CLICKHOUSE_URL: http://clickhouse:8123
+      S3_ENDPOINT: http://minio:9000
+    ports:
+      - "127.0.0.1:${API_PORT:-4000}:4000"
+    healthcheck:
+      <<: *health-defaults
+      test: [CMD, wget, -qO-, http://127.0.0.1:4000/health/ready]
+    deploy:
+      resources:
+        limits: { memory: 512M, cpus: "1.0" }
+
+  web:
+    <<: *security
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://127.0.0.1:4000}
+        VITE_GRAPHQL_URL: ${VITE_GRAPHQL_URL:-http://127.0.0.1:4000/graphql}
+    profiles: [app]
+    depends_on:
+      api: { condition: service_healthy }
+    ports:
+      - "127.0.0.1:${WEB_HTTP_PORT:-8080}:8080"
+    healthcheck:
+      <<: *health-defaults
+      test: [CMD, wget, -qO-, http://127.0.0.1:8080/]
+    deploy:
+      resources:
+        limits: { memory: 128M, cpus: "0.5" }
+
+  prometheus:
+    <<: *security
+    image: prom/prometheus:v2.54.1
+    profiles: [observability]
+    command: [--config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.retention.time=7d]
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./infra/observability/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      <<: *health-defaults
+      test: [CMD, wget, -qO-, http://127.0.0.1:9090/-/healthy]
+
+  loki:
+    <<: *security
+    image: grafana/loki:3.1.1
+    profiles: [observability]
+    command: [-config.file=/etc/loki/config.yml]
+    volumes:
+      - ./infra/observability/loki/config.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+    healthcheck:
+      <<: *health-defaults
+      test: [CMD-SHELL, "wget -qO- http://127.0.0.1:3100/ready | grep -q ready"]
+
+  tempo:
+    <<: *security
+    image: grafana/tempo:2.6.0
+    profiles: [observability]
+    command: [-config.file=/etc/tempo/config.yml]
+    volumes:
+      - ./infra/observability/tempo/config.yml:/etc/tempo/config.yml:ro
+      - tempo-data:/var/tempo
+    healthcheck:
+      <<: *health-defaults
+      test: [CMD, wget, -qO-, http://127.0.0.1:3200/ready]
+
+  otel-collector:
+    <<: *security
+    image: otel/opentelemetry-collector-contrib:0.108.0
+    profiles: [observability]
+    command: [--config=/etc/otel/config.yml]
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    volumes:
+      - ./infra/observability/otel/config.yml:/etc/otel/config.yml:ro
+    depends_on: [loki, tempo]
+
+  grafana:
+    <<: *security
+    image: grafana/grafana:11.2.0
+    profiles: [observability]
+    depends_on: [prometheus, loki]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-flowline_local_only}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+
+  toxiproxy:
+    <<: *security
+    image: shopify/toxiproxy:2.9.0
+    profiles: [chaos]
+    ports:
+      - "127.0.0.1:8474:8474"
+      - "127.0.0.1:16379:16379"
+    depends_on:
+      redis: { condition: service_healthy }
+
+volumes:
+  postgres-data:
+  clickhouse-data:
+  redis-data:
+  minio-data:
+  prometheus-data:
+  loki-data:
+  tempo-data:
+  grafana-data:
