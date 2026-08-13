@@ -2,7 +2,7 @@
 
 Flowline calculations, balances, eligibility rules, bill state, and risk decisions remain deterministic domain logic. Models may explain a precomputed result; they may not invent a financial fact, execute a transaction, approve credit, or become an authoritative calculator.
 
-`apps/orchestrator` is a separate, lightweight HTTP service. `modules/ai-orchestration` owns provider-neutral contracts, privacy policy, routing, cost bounds, timeouts, and content-addressed short-lived caching. The only enabled local adapter is deterministic and costs nothing.
+The orchestration control plane is intentionally not published in this product repository. During exploration, `apps/orchestrator` and `modules/ai-orchestration` are ignored local-companion paths; they must move to a separately governed repository before collaboration or deployment. This document defines the boundary only and is not evidence that an external provider, credential, or RunPod workload has been onboarded.
 
 ## Provider strategy
 

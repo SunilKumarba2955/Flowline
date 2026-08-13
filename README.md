@@ -11,11 +11,11 @@ Flowline is an India-first personal finance and credit-intelligence platform. Th
 - Redis/Valkey for disposable cache, rate limiting, locks, and coordination.
 - MinIO/S3 for encrypted immutable source objects and export/backup artifacts.
 - Worker with transactional outbox/inbox semantics for ingestion, projections, obligations, decisions, and alerts.
-- Isolated AI narrative orchestrator with provider-neutral adapters, privacy/cost policy, and a zero-cost deterministic default. Models explain derived facts; they never calculate balances or authorize actions.
+- A documented AI narrative boundary in which models may explain derived facts but never calculate balances or authorize actions. Its experimental implementation remains a local companion pending migration to a separately governed repository.
 
 See `docs/` for system architecture, database strategy, threat model, test strategy, chaos experiments, operations runbooks, and readiness evidence.
 
-The orchestrator contract anticipates OpenAI, Gemini, Anthropic, Nemotron, Ollama, Kimi, and RunPod. Every external adapter is disabled until its own reviewed onboarding PR; see `docs/architecture/AI_ORCHESTRATION.md`.
+The proposed orchestrator contract anticipates multiple interchangeable providers and compute targets. No provider implementation, credential, or RunPod lifecycle automation is shipped in this repository; every external adapter requires its own reviewed onboarding work in the future orchestration repository. See `docs/architecture/AI_ORCHESTRATION.md`.
 
 ## Data safety
 
