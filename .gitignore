@@ -12,3 +12,9 @@ test-results/
 .DS_Store
 Thumbs.db
 infra/volumes/
+
+# The experimental multi-provider AI control plane is developed as a local
+# companion and will move to its own repository after its security boundary is
+# reviewed. Do not publish its implementation from the product repository.
+apps/orchestrator/
+modules/ai-orchestration/
